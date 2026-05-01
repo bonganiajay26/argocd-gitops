@@ -20,6 +20,8 @@ spec:
     repoURL: https://github.com/bonganiajay26/argocd-gitops.git
     targetRevision: main
     path: argocd/applications        # ArgoCD watches this entire directory
+    directory:
+      recurse: true                  # descend into dev/ staging/ prod/ subdirs
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
