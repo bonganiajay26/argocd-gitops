@@ -17,8 +17,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: REPO_URL_PLACEHOLDER
-    targetRevision: BRANCH_PLACEHOLDER
+    repoURL: https://github.com/bonganiajay26/argocd-gitops.git
+    targetRevision: main
     path: argocd/applications        # ArgoCD watches this entire directory
   destination:
     server: https://kubernetes.default.svc
