@@ -10,7 +10,15 @@
       "Bash(git init *)",
       "Bash(git checkout *)",
       "Bash(git remote *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git config *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git commit *)",
+      "Bash(bash bootstrap/05-bootstrap-gitops.sh)",
+      "Bash(kubectl apply *)",
+      "Bash(kubectl describe *)"
     ]
   }
 }
