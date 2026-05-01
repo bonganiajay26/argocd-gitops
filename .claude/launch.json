@@ -1,0 +1,47 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ArgoCD UI",
+      "runtimeExecutable": "kubectl",
+      "runtimeArgs": ["port-forward", "svc/argocd-server", "-n", "argocd", "8080:80"],
+      "port": 8080
+    },
+    {
+      "name": "Grafana",
+      "runtimeExecutable": "kubectl",
+      "runtimeArgs": ["port-forward", "svc/kube-prom-stack-grafana", "-n", "monitoring", "3000:80"],
+      "port": 3000
+    },
+    {
+      "name": "Prometheus",
+      "runtimeExecutable": "kubectl",
+      "runtimeArgs": ["port-forward", "svc/kube-prom-stack-kube-prome-prometheus", "-n", "monitoring", "9090:9090"],
+      "port": 9090
+    },
+    {
+      "name": "Alertmanager",
+      "runtimeExecutable": "kubectl",
+      "runtimeArgs": ["port-forward", "svc/kube-prom-stack-kube-prome-alertmanager", "-n", "monitoring", "9093:9093"],
+      "port": 9093
+    },
+    {
+      "name": "Sample App (dev)",
+      "runtimeExecutable": "kubectl",
+      "runtimeArgs": ["port-forward", "svc/sample-app", "-n", "dev", "8081:80"],
+      "port": 8081
+    },
+    {
+      "name": "Sample App (staging)",
+      "runtimeExecutable": "kubectl",
+      "runtimeArgs": ["port-forward", "svc/sample-app", "-n", "staging", "8082:80"],
+      "port": 8082
+    },
+    {
+      "name": "Sample App (prod)",
+      "runtimeExecutable": "kubectl",
+      "runtimeArgs": ["port-forward", "svc/sample-app", "-n", "prod", "8083:80"],
+      "port": 8083
+    }
+  ]
+}

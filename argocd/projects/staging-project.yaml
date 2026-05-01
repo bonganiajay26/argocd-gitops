@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: staging
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: "Staging environment — gated promotions from dev"
+  sourceRepos:
+    - "https://github.com/bonganiajay26/argocd-gitops.git"
+  destinations:
+    - namespace: staging
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  roles:
+    - name: staging-deployer
+      description: "Staging team: sync only (no delete)"
+      policies:
+        - p, proj:staging:staging-deployer, applications, get,  staging/*, allow
+        - p, proj:staging:staging-deployer, applications, sync, staging/*, allow
+      groups:
+        - qa-team
+        - dev-leads
+  orphanedResources:
+    warn: true

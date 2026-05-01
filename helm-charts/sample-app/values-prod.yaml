@@ -1,0 +1,28 @@
+replicaCount: 3
+env:
+  LOG_LEVEL: warn
+  APP_ENV: prod
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+ingress:
+  enabled: true
+  host: app.prod.local
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: sample-app
+          topologyKey: kubernetes.io/hostname

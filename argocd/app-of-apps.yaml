@@ -1,0 +1,40 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# App-of-Apps Pattern
+# This is the ONLY manifest applied manually. ArgoCD manages everything else.
+# ArgoCD watches the argocd/applications/ directory and auto-creates child apps.
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root-app-of-apps
+  namespace: argocd
+  # Finalizer ensures child apps are deleted when root is deleted
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app.kubernetes.io/part-of: gitops-platform
+    tier: root
+spec:
+  project: default
+  source:
+    repoURL: REPO_URL_PLACEHOLDER
+    targetRevision: BRANCH_PLACEHOLDER
+    path: argocd/applications        # ArgoCD watches this entire directory
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true       # delete resources removed from Git
+      selfHeal: true    # revert manual cluster changes
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - PrunePropagationPolicy=foreground
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

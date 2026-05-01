@@ -1,0 +1,52 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: "Development environment — permissive, fast sync"
+
+  # Which repos this project may source from
+  sourceRepos:
+    - "https://github.com/bonganiajay26/argocd-gitops.git"
+    - "https://charts.helm.sh/stable"
+    - "https://prometheus-community.github.io/helm-charts"
+
+  # Where apps in this project may deploy
+  destinations:
+    - namespace: dev
+      server: https://kubernetes.default.svc
+    - namespace: monitoring
+      server: https://kubernetes.default.svc
+
+  # Resources this project may manage
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+
+  # Who can access this project
+  roles:
+    - name: dev-deployer
+      description: "Dev team: sync and read"
+      policies:
+        - p, proj:dev:dev-deployer, applications, get,    dev/*, allow
+        - p, proj:dev:dev-deployer, applications, sync,   dev/*, allow
+        - p, proj:dev:dev-deployer, applications, create, dev/*, allow
+        - p, proj:dev:dev-deployer, applications, update, dev/*, allow
+        - p, proj:dev:dev-deployer, applications, delete, dev/*, allow
+      groups:
+        - dev-team
+
+  # Orphaned resource monitoring
+  orphanedResources:
+    warn: true

@@ -1,0 +1,14 @@
+replicaCount: 2
+env:
+  LOG_LEVEL: info
+  APP_ENV: staging
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+ingress:
+  enabled: true
+  host: app.staging.local

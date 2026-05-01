@@ -1,0 +1,149 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: sample-app-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack    # must match Prometheus ruleSelector
+spec:
+  groups:
+
+    # ── Application Availability ─────────────────────────────────────────────
+    - name: sample-app.availability
+      interval: 30s
+      rules:
+        - alert: SampleAppDown
+          expr: |
+            absent(up{job="sample-app"} == 1)
+          for: 2m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "sample-app is completely down"
+            description: "No sample-app pods are responding to scrapes in {{ $labels.namespace }}. Check pod status immediately."
+            runbook: "https://wiki.yourorg.com/runbooks/sample-app-down"
+
+        - alert: SampleAppHighErrorRate
+          expr: |
+            rate(http_requests_total{job="sample-app", status=~"5.."}[5m])
+            /
+            rate(http_requests_total{job="sample-app"}[5m]) > 0.05
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "sample-app error rate > 5%"
+            description: "Error rate is {{ $value | humanizePercentage }} in {{ $labels.namespace }}"
+
+        - alert: SampleAppHighLatency
+          expr: |
+            histogram_quantile(0.99,
+              rate(http_request_duration_seconds_bucket{job="sample-app"}[5m])
+            ) > 1.0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "sample-app P99 latency > 1s"
+            description: "99th percentile latency is {{ $value }}s in {{ $labels.namespace }}"
+
+    # ── Resource Pressure ────────────────────────────────────────────────────
+    - name: sample-app.resources
+      rules:
+        - alert: SampleAppHighCPU
+          expr: |
+            rate(container_cpu_usage_seconds_total{
+              container="sample-app",
+              namespace=~"dev|staging|prod"
+            }[5m]) > 0.8
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "sample-app CPU usage > 80%"
+            description: "Pod {{ $labels.pod }} in {{ $labels.namespace }} is using {{ $value | humanizePercentage }} CPU"
+
+        - alert: SampleAppHighMemory
+          expr: |
+            container_memory_working_set_bytes{
+              container="sample-app",
+              namespace=~"dev|staging|prod"
+            }
+            /
+            container_spec_memory_limit_bytes{
+              container="sample-app"
+            } > 0.85
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "sample-app memory usage > 85% of limit"
+            description: "Pod {{ $labels.pod }} in {{ $labels.namespace }} memory at {{ $value | humanizePercentage }} of limit"
+
+        - alert: SampleAppMemoryOOMRisk
+          expr: |
+            container_memory_working_set_bytes{
+              container="sample-app"
+            }
+            /
+            container_spec_memory_limit_bytes{
+              container="sample-app"
+            } > 0.95
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "sample-app at OOM risk (>95% memory limit)"
+            description: "Pod {{ $labels.pod }} is about to be OOM-killed"
+
+    # ── Pod Health ───────────────────────────────────────────────────────────
+    - name: sample-app.pods
+      rules:
+        - alert: SampleAppPodCrashLooping
+          expr: |
+            rate(kube_pod_container_status_restarts_total{
+              container="sample-app"
+            }[15m]) * 60 > 1
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "sample-app pod crash-looping"
+            description: "Pod {{ $labels.pod }} in {{ $labels.namespace }} is restarting {{ $value }} times/min"
+
+        - alert: SampleAppPodsNotReady
+          expr: |
+            kube_deployment_status_replicas_ready{
+              deployment="sample-app",
+              namespace=~"dev|staging|prod"
+            }
+            <
+            kube_deployment_spec_replicas{
+              deployment="sample-app"
+            }
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "sample-app deployment has fewer ready pods than desired"
+            description: "{{ $labels.namespace }}/sample-app: {{ $value }} ready vs {{ $labels.desired }} desired"
+
+    # ── HPA ──────────────────────────────────────────────────────────────────
+    - name: sample-app.autoscaling
+      rules:
+        - alert: SampleAppHPAMaxReplicas
+          expr: |
+            kube_horizontalpodautoscaler_status_current_replicas{
+              horizontalpodautoscaler="sample-app"
+            }
+            >=
+            kube_horizontalpodautoscaler_spec_max_replicas{
+              horizontalpodautoscaler="sample-app"
+            }
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "sample-app HPA at maximum replicas"
+            description: "HPA has scaled to max ({{ $value }}) in {{ $labels.namespace }} — consider raising maxReplicas"

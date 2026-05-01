@@ -1,0 +1,23 @@
+# Secrets — never commit these
+*.env
+.env.*
+secrets/
+*-secret.yaml
+!*-sealed-secret.yaml
+
+# Helm generated
+charts/
+*.tgz
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Kustomize build output
+build/
+out/

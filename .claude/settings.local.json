@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ajayd\\\\ARGOCD-WORKFLOW\" -Recurse -File | Sort-Object FullName | Select-Object -ExpandProperty FullName | ForEach-Object { $_.Replace\\(\"C:\\\\Users\\\\ajayd\\\\ARGOCD-WORKFLOW\\\\\", \"\"\\) })",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(kubectl get *)",
+      "Bash(bash bootstrap/02-install-argocd.sh)",
+      "Bash(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath=\"{.data.password}\")",
+      "Bash(xargs sed *)",
+      "Bash(git init *)",
+      "Bash(git checkout *)",
+      "Bash(git remote *)",
+      "Bash(git add *)"
+    ]
+  }
+}

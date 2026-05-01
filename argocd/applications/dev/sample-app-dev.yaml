@@ -1,0 +1,43 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Child application: sample-app in dev namespace
+# Source: Kustomize overlay at apps/sample-app/overlays/dev
+# Auto-sync: ON (dev is permissive — sync on every commit)
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sample-app-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app.kubernetes.io/name: sample-app
+    environment: dev
+spec:
+  project: dev
+  source:
+    repoURL: https://github.com/bonganiajay26/argocd-gitops.git
+    targetRevision: main
+    path: apps/sample-app/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 1m
+  # Ignore differences in HPA's currentReplicas (managed by autoscaler)
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas

@@ -1,0 +1,45 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sample-app-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app.kubernetes.io/name: sample-app
+    environment: prod
+  annotations:
+    gitops.io/promoted-from: staging
+    gitops.io/approved-by: ""     # filled by promotion workflow
+spec:
+  project: prod
+  source:
+    repoURL: https://github.com/bonganiajay26/argocd-gitops.git
+    targetRevision: main
+    path: apps/sample-app/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: prod
+  syncPolicy:
+    # Production: NO automated sync — human must press "Sync" in UI or CLI
+    automated: {}    # empty = disabled
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - PrunePropagationPolicy=foreground
+    retry:
+      limit: 2
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+      jsonPointers:
+        - /spec/minReplicas
+        - /spec/maxReplicas

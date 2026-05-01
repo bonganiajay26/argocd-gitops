@@ -1,0 +1,20 @@
+# Grafana sidecar auto-imports any ConfigMap with label grafana_dashboard=1
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sample-app-grafana-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  sample-app-dashboard.json: |
+    # Paste the contents of sample-app-dashboard.json here, or use kustomize
+    # secretGenerator / configMapGenerator to embed the file at deploy time.
+    # Example kustomization.yaml:
+    #   configMapGenerator:
+    #     - name: sample-app-grafana-dashboard
+    #       files:
+    #         - dashboards/sample-app-dashboard.json
+    #       options:
+    #         labels:
+    #           grafana_dashboard: "1"

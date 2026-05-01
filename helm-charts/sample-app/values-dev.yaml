@@ -1,0 +1,14 @@
+replicaCount: 1
+env:
+  LOG_LEVEL: debug
+  APP_ENV: dev
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+ingress:
+  enabled: true
+  host: app.dev.local

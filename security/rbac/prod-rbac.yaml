@@ -1,0 +1,103 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# RBAC for prod namespace
+# SREs get full access; developers get read-only; no exec into prod pods.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# SRE Role: full management rights
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: prod-sre
+  namespace: prod
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "services", "endpoints",
+                 "configmaps", "events", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  # NO pods/exec in prod — use kubectl debug with ephemeral containers instead
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prod-sre-binding
+  namespace: prod
+subjects:
+  - kind: Group
+    name: sre-team
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: prod-sre
+  apiGroup: rbac.authorization.k8s.io
+---
+# Developer Role: read-only view of prod
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: prod-readonly
+  namespace: prod
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "services", "events", "configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prod-readonly-binding
+  namespace: prod
+subjects:
+  - kind: Group
+    name: dev-team
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: prod-readonly
+  apiGroup: rbac.authorization.k8s.io
+---
+# ResourceQuota: prevent resource abuse in prod
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: prod-quota
+  namespace: prod
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 4Gi
+    limits.cpu: "8"
+    limits.memory: 8Gi
+    pods: "20"
+    services: "10"
+    persistentvolumeclaims: "5"
+---
+# LimitRange: enforce defaults so no pod runs without resource specs
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: prod-limit-range
+  namespace: prod
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 200m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      max:
+        cpu: "2"
+        memory: 2Gi
+      min:
+        cpu: 10m
+        memory: 16Mi

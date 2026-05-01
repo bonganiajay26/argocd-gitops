@@ -1,0 +1,21 @@
+# Dev overlay: 1 replica, minimal resources, debug env var
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-app
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: sample-app
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          env:
+            - name: LOG_LEVEL
+              value: debug

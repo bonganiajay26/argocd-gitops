@@ -1,0 +1,13 @@
+apiVersion: v2
+name: sample-app
+description: "Production-grade sample application Helm chart"
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - sample
+  - demo
+  - gitops
+maintainers:
+  - name: Platform Team
+    email: platform@yourorg.com

@@ -1,0 +1,41 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sample-app-staging
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app.kubernetes.io/name: sample-app
+    environment: staging
+  annotations:
+    # Promoted from dev when this annotation is updated by CI
+    gitops.io/promoted-from: dev
+    gitops.io/promoted-at: "2024-01-01T00:00:00Z"
+spec:
+  project: staging
+  source:
+    repoURL: https://github.com/bonganiajay26/argocd-gitops.git
+    targetRevision: main
+    path: apps/sample-app/overlays/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true    # revert accidental manual changes
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas

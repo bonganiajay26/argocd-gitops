@@ -1,0 +1,48 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: "Production environment — manual sync gate, no auto-prune"
+  sourceRepos:
+    - "https://github.com/bonganiajay26/argocd-gitops.git"
+  destinations:
+    - namespace: prod
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  roles:
+    - name: prod-deployer
+      description: "SRE team only: sync but never delete"
+      policies:
+        - p, proj:prod:prod-deployer, applications, get,  prod/*, allow
+        - p, proj:prod:prod-deployer, applications, sync, prod/*, allow
+        # Explicitly deny delete
+        - p, proj:prod:prod-deployer, applications, delete, prod/*, deny
+      groups:
+        - sre-team
+    - name: prod-readonly
+      description: "Developers: read-only view of prod"
+      policies:
+        - p, proj:prod:prod-readonly, applications, get, prod/*, allow
+      groups:
+        - dev-team
+  # Sync windows: only allow production deploys during business hours
+  syncWindows:
+    - kind: allow
+      schedule: "0 9 * * 1-5"   # Mon–Fri 09:00
+      duration: 8h
+      applications:
+        - "*"
+      namespaces:
+        - prod
+      manualSync: true
+  orphanedResources:
+    warn: true

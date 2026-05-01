@@ -1,0 +1,107 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Promotion Pipeline: dev → staging → prod
+# Triggered manually via workflow_dispatch with environment and image tag inputs.
+#
+# Flow:
+#   1. Copy image tag from source overlay to target overlay
+#   2. Commit and push
+#   3. For prod: opens a PR instead of pushing directly (requires human review)
+# ─────────────────────────────────────────────────────────────────────────────
+name: Promote
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_env:
+        description: 'Source environment (dev or staging)'
+        required: true
+        default: dev
+        type: choice
+        options: [dev, staging]
+      target_env:
+        description: 'Target environment (staging or prod)'
+        required: true
+        default: staging
+        type: choice
+        options: [staging, prod]
+      image_tag:
+        description: 'Image tag to promote (leave blank to read from source kustomization)'
+        required: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/sample-app
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.target_env }}  # requires env approval for prod
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITOPS_PAT }}
+          ref: main
+
+      - name: Install kustomize
+        run: |
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Resolve image tag
+        id: resolve
+        run: |
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            echo "tag=${{ github.event.inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            # Extract from source overlay kustomization.yaml
+            TAG=$(grep -oP '(?<=newTag: ").*(?=")' \
+              apps/sample-app/overlays/${{ github.event.inputs.source_env }}/kustomization.yaml)
+            echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update target overlay
+        run: |
+          cd apps/sample-app/overlays/${{ github.event.inputs.target_env }}
+          kustomize edit set image \
+            gcr.io/google-samples/hello-app=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.resolve.outputs.tag }}
+
+      - name: Update promotion annotation
+        run: |
+          # Record who promoted and when (auditable in git history)
+          FILE="argocd/applications/${{ github.event.inputs.target_env }}/sample-app-${{ github.event.inputs.target_env }}.yaml"
+          sed -i "s|gitops.io/promoted-from:.*|gitops.io/promoted-from: ${{ github.event.inputs.source_env }}|" "${FILE}"
+          sed -i "s|gitops.io/promoted-at:.*|gitops.io/promoted-at: \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"|" "${FILE}"
+
+      - name: Commit (staging — direct push)
+        if: github.event.inputs.target_env == 'staging'
+        run: |
+          git config user.name "ci-bot"
+          git config user.email "ci@yourorg.com"
+          git add apps/sample-app/overlays/staging/ argocd/applications/staging/
+          git commit -m "chore(staging): promote sample-app to ${{ steps.resolve.outputs.tag }} [skip ci]"
+          git push
+
+      - name: Open PR (prod — requires human approval)
+        if: github.event.inputs.target_env == 'prod'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITOPS_PAT }}
+          branch: promote/prod-${{ steps.resolve.outputs.tag }}
+          title: "chore(prod): promote sample-app to ${{ steps.resolve.outputs.tag }}"
+          body: |
+            ## Production Promotion
+
+            **Image tag:** `${{ steps.resolve.outputs.tag }}`
+            **Promoted from:** ${{ github.event.inputs.source_env }}
+            **Triggered by:** @${{ github.actor }}
+
+            ### Checklist
+            - [ ] Staging tests passed
+            - [ ] Load test results reviewed
+            - [ ] On-call SRE notified
+            - [ ] Rollback plan confirmed
+
+            ---
+            *Merge this PR to trigger ArgoCD sync. ArgoCD will wait for manual sync approval due to prod sync window policy.*
+          labels: promotion,prod
+          reviewers: sre-team
